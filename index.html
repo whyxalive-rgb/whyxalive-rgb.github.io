@@ -2,290 +2,250 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Mini App</title>
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Crypto Clicker</title>
     <style>
-        :root {
-            --bg-color: var(--tg-theme-bg-color, #18222d);
-            --text-color: var(--tg-theme-text-color, #ffffff);
-            --hint-color: var(--tg-theme-hint-color, #aaaaaa);
-            --button-color: var(--tg-theme-button-color, #50a8eb);
-            --button-text: var(--tg-theme-button-text-color, #ffffff);
-            --card-bg: var(--tg-theme-secondary-bg-color, #222f3c);
-        }
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-            background-color: var(--bg-color);
-            color: var(--text-color);
-            margin: 0; padding: 15px;
-            text-align: center;
-        }
-        .container { max-width: 450px; margin: 0 auto; padding-bottom: 20px;}
+        /* Стили в духе Dark Mode / NotCoin */
+        body { margin: 0; padding: 0; background-color: #000; color: #fff; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; overflow: hidden; touch-action: manipulation; }
+        .screen { display: none; height: 100vh; flex-direction: column; padding: 20px; box-sizing: border-box; }
+        .active { display: flex; }
         
-        /* Карточка баланса */
-        .balance-card {
-            background-color: var(--card-bg);
-            padding: 25px; border-radius: 16px; margin-bottom: 20px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-        }
-        .balance-value { font-size: 42px; font-weight: 800; }
-        .balance-label { color: var(--hint-color); font-size: 14px; text-transform: uppercase; letter-spacing: 1px;}
+        /* Главный экран */
+        .balance-container { text-align: center; margin-top: 20px; }
+        .balance { font-size: 48px; font-weight: bold; color: #f3ba2f; }
+        .coin-container { flex-grow: 1; display: flex; justify-content: center; align-items: center; position: relative; }
+        .coin { width: 250px; height: 250px; background: radial-gradient(circle, #f3ba2f 0%, #d49e12 100%); border-radius: 50%; box-shadow: 0 0 50px rgba(243, 186, 47, 0.4); transition: transform 0.1s; cursor: pointer; border: 5px solid #fff; position: relative; z-index: 10; }
+        .coin:active { transform: scale(0.95); }
+        .energy-bar { width: 100%; height: 10px; background: #333; border-radius: 5px; margin-bottom: 20px; overflow: hidden; }
+        .energy-fill { height: 100%; background: linear-gradient(90deg, #f3ba2f, #ffeb3b); width: 100%; transition: width 0.5s; }
         
-        /* Меню */
-        .menu-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-        .btn {
-            background-color: var(--button-color); color: var(--button-text);
-            border: none; padding: 16px; border-radius: 12px;
-            font-size: 16px; font-weight: 600; cursor: pointer;
-            transition: opacity 0.2s; width: 100%;
-        }
-        .btn:active { opacity: 0.8; }
-        .btn-outline { background-color: transparent; border: 2px solid var(--button-color); color: var(--button-color); margin-bottom: 15px;}
+        /* Эффект клика (+1) */
+        .click-anim { position: absolute; color: white; font-weight: bold; font-size: 24px; animation: floatUp 1s ease-out forwards; pointer-events: none; }
+        @keyframes floatUp { 0% { opacity: 1; transform: translateY(0); } 100% { opacity: 0; transform: translateY(-100px); } }
 
-        /* Секции */
-        .section { display: none; text-align: left; }
-        .active-section { display: block; animation: fadeIn 0.3s; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        /* Навигация */
+        .nav { position: fixed; bottom: 0; left: 0; width: 100%; background: #1a1a1a; display: flex; justify-content: space-around; padding: 15px 0; border-top: 1px solid #333; z-index: 20; }
+        .nav-btn { background: none; border: none; color: #888; font-size: 14px; display: flex; flex-direction: column; align-items: center; }
+        .nav-btn.active-btn { color: #f3ba2f; }
+        .nav-icon { font-size: 24px; margin-bottom: 5px; }
 
-        /* Элементы списка заданий */
-        .task-item {
-            background-color: var(--card-bg); padding: 15px; border-radius: 12px;
-            margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;
-        }
-        .task-info { display: flex; flex-direction: column; }
-        .task-channel { font-weight: bold; font-size: 16px; margin-bottom: 4px; }
-        .task-price { color: #f5c518; font-weight: bold; }
-        .task-btn { background-color: var(--button-color); color: white; border: none; padding: 8px 16px; border-radius: 8px; font-size: 13px; cursor: pointer;}
+        /* Списки (Магазин, Друзья) */
+        .list-item { background: #1a1a1a; padding: 15px; border-radius: 12px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
+        .btn-action { background: #f3ba2f; border: none; padding: 8px 16px; border-radius: 8px; font-weight: bold; cursor: pointer; color: #000; }
+        .btn-action:disabled { background: #555; color: #888; cursor: not-allowed; }
         
-        /* Формы */
-        .form-group { margin-bottom: 15px; }
-        .form-label { display: block; margin-bottom: 8px; color: var(--hint-color); font-size: 14px;}
-        .form-input {
-            width: 100%; padding: 14px; border-radius: 10px; border: 1px solid var(--hint-color);
-            background-color: var(--bg-color); color: var(--text-color); box-sizing: border-box; font-size: 16px;
-        }
-        .form-input:focus { border-color: var(--button-color); outline: none; }
-
-        h2 { margin-top: 0; margin-bottom: 20px; font-size: 24px;}
+        h2 { border-bottom: 2px solid #333; padding-bottom: 10px; }
     </style>
 </head>
 <body>
-    <div class="container">
-        
-        <!-- ГЛАВНАЯ -->
-        <div id="home" class="section active-section" style="text-align: center;">
-            <div class="balance-card">
-                <div class="balance-label">Ваш баланс</div>
-                <div class="balance-value" id="balance-display">0 ⭐</div>
-            </div>
-            <div class="menu-grid">
-                <button class="btn" onclick="nav('tasks')">📝 Задания</button>
-                <button class="btn" onclick="nav('create_ad')">📢 Реклама</button>
-                <button class="btn" onclick="nav('referral')">🔗 Рефералы</button>
-                <button class="btn" onclick="nav('withdraw')">💸 Вывод</button>
-            </div>
-        </div>
 
-        <!-- ЗАДАНИЯ -->
-        <div id="tasks" class="section">
-            <button class="btn btn-outline" onclick="nav('home')">← Назад</button>
-            <h2>Выполнить задания</h2>
-            <div id="tasks-container">Загрузка...</div>
+    <!-- ЭКРАН 1: КЛИКЕР -->
+    <div id="game" class="screen active">
+        <div class="balance-container">
+            <div id="balance" class="balance">0</div>
+            <div style="font-size: 14px; color: #888;">Монеты</div>
         </div>
-
-        <!-- СОЗДАТЬ РЕКЛАМУ -->
-        <div id="create_ad" class="section">
-            <button class="btn btn-outline" onclick="nav('home')">← Назад</button>
-            <h2>Новая кампания</h2>
-            <div class="form-group">
-                <label class="form-label">Юзернейм канала (с @)</label>
-                <input type="text" id="ad-channel" class="form-input" placeholder="@mychannel">
-            </div>
-            <div class="form-group">
-                <label class="form-label">Цена за подписку (⭐)</label>
-                <input type="number" id="ad-price" class="form-input" placeholder="2">
-            </div>
-            <div class="form-group">
-                <label class="form-label">Общий бюджет (⭐)</label>
-                <input type="number" id="ad-budget" class="form-input" placeholder="100">
-            </div>
-            <button class="btn" onclick="submitAd()">Создать задание</button>
+        <div class="coin-container">
+            <div class="coin" id="coin-btn"></div>
         </div>
+        <div style="text-align: center; margin-bottom: 5px;">⚡ <span id="energy-val">1000</span>/1000</div>
+        <div class="energy-bar"><div id="energy-fill" class="energy-fill"></div></div>
+        <div style="height: 60px;"></div> <!-- Отступ под меню -->
+    </div>
 
-        <!-- РЕФЕРАЛКА -->
-        <div id="referral" class="section">
-            <button class="btn btn-outline" onclick="nav('home')">← Назад</button>
-            <h2>Пригласить друга</h2>
-            <p style="color: var(--hint-color); line-height: 1.5;">Получайте бонусы за каждого приглашенного друга, который начнет пользоваться ботом.</p>
-            <div class="form-group">
-                <input type="text" id="ref-link" class="form-input" readonly value="Загрузка...">
+    <!-- ЭКРАН 2: МАГАЗИН -->
+    <div id="shop" class="screen">
+        <h2>Магазин улучшений</h2>
+        <div id="shop-list"></div>
+    </div>
+
+    <!-- ЭКРАН 3: ЗАДАНИЯ -->
+    <div id="tasks" class="screen">
+        <h2>Задания</h2>
+        <div class="list-item">
+            <div>
+                <div>Подпишись на канал</div>
+                <div style="color: #f3ba2f; font-size: 12px;">+5000 монет</div>
             </div>
-            <button class="btn" onclick="copyRef()">Копировать ссылку</button>
+            <button class="btn-action" onclick="checkTask(this, 5000)">Check</button>
         </div>
+    </div>
 
-        <!-- ВЫВОД -->
-        <div id="withdraw" class="section">
-            <button class="btn btn-outline" onclick="nav('home')">← Назад</button>
-            <h2>Вывод средств</h2>
-            <p style="color: var(--hint-color);">Минимальная сумма вывода: 100 ⭐</p>
-            <p style="font-size: 20px; font-weight: bold;">Доступно: <span id="withdraw-balance">0</span> ⭐</p>
-            <button class="btn" onclick="submitWithdraw()">Отправить заявку</button>
+    <!-- ЭКРАН 4: ДРУЗЬЯ -->
+    <div id="friends" class="screen">
+        <h2>Рефералы</h2>
+        <div style="background: #222; padding: 15px; border-radius: 10px; text-align: center; margin-bottom: 20px;">
+            <div style="font-size: 12px; color: #aaa;">Твоя ссылка:</div>
+            <code id="ref-link" style="color: #f3ba2f; word-break: break-all;">t.me/MyBot?start=123</code>
+            <button class="btn-action" style="margin-top: 10px; width: 100%;" onclick="copyRef()">Копировать</button>
         </div>
+        <div class="list-item">
+            <div>Друг: Alex</div>
+            <div style="color: #888;">+1500</div>
+        </div>
+    </div>
 
+    <!-- НАВИГАЦИЯ -->
+    <div class="nav">
+        <button class="nav-btn active-btn" onclick="switchTab('game', this)"><span class="nav-icon">🪙</span>Play</button>
+        <button class="nav-btn" onclick="switchTab('shop', this)"><span class="nav-icon">🚀</span>Boost</button>
+        <button class="nav-btn" onclick="switchTab('tasks', this)"><span class="nav-icon">📋</span>Task</button>
+        <button class="nav-btn" onclick="switchTab('friends', this)"><span class="nav-icon">👥</span>Frens</button>
     </div>
 
     <script>
-        const tg = window.Telegram.WebApp;
-        tg.ready();
-        tg.expand();
+        // --- ЛОГИКА ИГРЫ ---
+        let state = {
+            balance: 0,
+            energy: 1000,
+            maxEnergy: 1000,
+            multitap: 1,
+            costs: { multitap: 100, energy: 100 }
+        };
 
-        const API_URL = "https://tasia-lank-shameka.ngrok-free.dev"; // !!! ВАЖНО: Замените на URL вашего сервера (например, ngrok) при деплое
-        // Для локального теста с телефона это работать не будет без https, для WebBrowser используйте http://127.0.0.1:8000
-        // Если вы запускаете локально, используйте http://127.0.0.1:8000
-        
-        let currentBalance = 0;
-
-        // --- Навигация ---
-        function nav(sectionId) {
-            document.querySelectorAll('.section').forEach(el => el.classList.remove('active-section'));
-            document.getElementById(sectionId).classList.add('active-section');
-            if(sectionId === 'home') loadProfile();
-            if(sectionId === 'tasks') loadTasks();
+        // Загрузка сохранения
+        if(localStorage.getItem('clickerState')) {
+            state = JSON.parse(localStorage.getItem('clickerState'));
         }
 
-        // --- API Helper ---
-        async function api(endpoint, data = {}) {
-            data.initData = tg.initData;
-            
-            // Проверка на наличие start_param, чтобы избежать ошибки undefined
-            data.start_param = (tg.initDataUnsafe && tg.initDataUnsafe.start_param) ? tg.initDataUnsafe.start_param : "";
+        const els = {
+            balance: document.getElementById('balance'),
+            energyVal: document.getElementById('energy-val'),
+            energyFill: document.getElementById('energy-fill'),
+            coin: document.getElementById('coin-btn'),
+            shopList: document.getElementById('shop-list')
+        };
 
-            try {
-                const res = await fetch(`${API_URL}${endpoint}`, {
-                    method: 'POST', 
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'ngrok-skip-browser-warning': 'true' // <--- ЭТА СТРОКА РЕШАЕТ ПРОБЛЕМУ
-                    },
-                    body: JSON.stringify(data)
-                });
+        // Обновление UI
+        function updateUI() {
+            els.balance.textContent = state.balance.toLocaleString();
+            els.energyVal.textContent = Math.floor(state.energy);
+            els.energyFill.style.width = (state.energy / state.maxEnergy * 100) + '%';
+        }
+
+        // Клик
+        els.coin.addEventListener('click', (e) => {
+            if (state.energy >= state.multitap) {
+                state.balance += state.multitap;
+                state.energy -= state.multitap;
                 
-                // Проверяем, что ответ - это JSON, а не ошибка сервера
-                const contentType = res.headers.get("content-type");
-                if (!contentType || !contentType.includes("application/json")) {
-                    throw new Error("Сервер вернул не JSON (возможно, ошибка 500)");
-                }
-
-                return await res.json();
-            } catch (e) {
-                console.error(e); // Для отладки
-                tg.showAlert(`Ошибка сети: ${e.message}`);
-                return null;
+                // Анимация цифры
+                const rect = els.coin.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                showFloatText(x, y, `+${state.multitap}`);
+                
+                // Вибрация (работает на мобильных)
+                if (navigator.vibrate) navigator.vibrate(10);
+                
+                updateUI();
+                saveState();
             }
+        });
+
+        // Анимация цифры
+        function showFloatText(x, y, text) {
+            const el = document.createElement('div');
+            el.className = 'click-anim';
+            el.innerText = text;
+            el.style.left = `${x}px`;
+            el.style.top = `${y}px`;
+            els.coin.appendChild(el);
+            setTimeout(() => el.remove(), 1000);
         }
 
-
-        // --- Логика ---
-        async function loadProfile() {
-            const res = await api('/get_profile');
-            if (res && res.ok) {
-                currentBalance = res.balance;
-                document.getElementById('balance-display').innerText = `${res.balance} ⭐`;
-                document.getElementById('withdraw-balance').innerText = res.balance;
-                document.getElementById('ref-link').value = res.referral_link;
+        // Регенерация энергии
+        setInterval(() => {
+            if (state.energy < state.maxEnergy) {
+                state.energy = Math.min(state.energy + 1, state.maxEnergy);
+                updateUI();
+                saveState();
             }
+        }, 1000);
+
+        // Магазин
+        function renderShop() {
+            els.shopList.innerHTML = `
+                <div class="list-item">
+                    <div>
+                        <div>Multitap (Lvl ${state.multitap})</div>
+                        <div style="color: #888; font-size: 12px;">+1 за тап</div>
+                    </div>
+                    <button class="btn-action" onclick="buyUpgrade('multitap')">
+                        ${state.costs.multitap} 💰
+                    </button>
+                </div>
+                 <div class="list-item">
+                    <div>
+                        <div>Energy Limit</div>
+                        <div style="color: #888; font-size: 12px;">+500 энергии</div>
+                    </div>
+                    <button class="btn-action" onclick="buyUpgrade('energy')">
+                        ${state.costs.energy} 💰
+                    </button>
+                </div>
+            `;
         }
 
-        async function loadTasks() {
-            const container = document.getElementById('tasks-container');
-            container.innerHTML = '<p style="text-align:center; color: var(--hint-color)">Поиск заданий...</p>';
-            const res = await api('/get_tasks');
-            if (res && res.ok) {
-                if(res.tasks.length === 0) {
-                    container.innerHTML = '<p style="text-align:center; color: var(--hint-color)">Заданий пока нет</p>';
-                    return;
-                }
-                container.innerHTML = '';
-                res.tasks.forEach(task => {
-                    const el = document.createElement('div');
-                    el.className = 'task-item';
-                    el.innerHTML = `
-                        <div class="task-info">
-                            <span class="task-channel">${task.channel}</span>
-                            <span class="task-price">+${task.price} ⭐</span>
-                        </div>
-                        <div>
-                            <button class="task-btn" style="margin-right:5px; background:#3390ec" onclick="openChannel('${task.channel}')">Подписаться</button>
-                            <button class="task-btn" onclick="checkTask(${task.id})">Проверить</button>
-                        </div>
-                    `;
-                    container.appendChild(el);
-                });
-            }
-        }
-
-        function openChannel(username) {
-            tg.openTelegramLink(`https://t.me/${username.replace('@', '')}`);
-        }
-
-        async function checkTask(taskId) {
-            tg.MainButton.showProgress();
-            const res = await api('/complete_task', { task_id: taskId });
-            tg.MainButton.hideProgress();
-            
-            if (res && res.ok) {
-                tg.showAlert(`Успешно! Начислено ${res.new_balance} ⭐`);
-                loadTasks(); // Обновить список
+        window.buyUpgrade = (type) => {
+            const cost = state.costs[type];
+            if (state.balance >= cost) {
+                state.balance -= cost;
+                state.costs[type] = Math.floor(cost * 2); // Цена растет
+                if(type === 'multitap') state.multitap++;
+                if(type === 'energy') state.maxEnergy += 500;
+                
+                updateUI();
+                renderShop();
+                saveState();
+                alert('Куплено!');
             } else {
-                tg.showAlert(res ? res.error : "Ошибка");
+                alert('Не хватает монет!');
             }
+        };
+
+        // Задания
+        window.checkTask = (btn, reward) => {
+            btn.textContent = 'Checking...';
+            setTimeout(() => {
+                state.balance += reward;
+                btn.textContent = 'Done ✅';
+                btn.disabled = true;
+                updateUI();
+                saveState();
+            }, 1000);
+        };
+
+        // Навигация
+        window.switchTab = (tabId, btn) => {
+            document.querySelectorAll('.screen').forEach(el => el.classList.remove('active'));
+            document.getElementById(tabId).classList.add('active');
+            document.querySelectorAll('.nav-btn').forEach(el => el.classList.remove('active-btn'));
+            btn.classList.add('active-btn');
+            if(tabId === 'shop') renderShop();
+        };
+
+        // Копирование ссылки
+        window.copyRef = () => {
+             // Имитация получения ID пользователя
+            const userId = Math.floor(Math.random() * 100000);
+            const link = `https://t.me/MyClickerBot?start=ref_${userId}`;
+            navigator.clipboard.writeText(link);
+            alert('Ссылка скопирована: ' + link);
+        };
+
+        function saveState() {
+            localStorage.setItem('clickerState', JSON.stringify(state));
         }
 
-        async function submitAd() {
-            const channel = document.getElementById('ad-channel').value;
-            const price = document.getElementById('ad-price').value;
-            const budget = document.getElementById('ad-budget').value;
-
-            if(!channel || !price || !budget) return tg.showAlert("Заполните все поля");
-
-            tg.MainButton.showProgress();
-            const res = await api('/create_ad', { channel, price, budget });
-            tg.MainButton.hideProgress();
-
-            if (res && res.ok) {
-                tg.showAlert("Рекламная кампания создана!");
-                document.getElementById('ad-channel').value = '';
-                nav('home');
-            } else {
-                tg.showAlert(res.error);
-            }
+        // Инициализация
+        updateUI();
+        
+        // Интеграция с Телеграм (расширение на весь экран)
+        if (window.Telegram && window.Telegram.WebApp) {
+            window.Telegram.WebApp.expand();
         }
-
-        function copyRef() {
-            const copyText = document.getElementById("ref-link");
-            copyText.select();
-            document.execCommand("copy");
-            tg.showAlert("Ссылка скопирована!");
-        }
-
-        async function submitWithdraw() {
-            if (currentBalance < 100) return tg.showAlert("Минимум 100 ⭐");
-            if (!confirm("Вы уверены, что хотите отправить заявку на вывод?")) return;
-
-            const res = await api('/withdraw');
-            if (res && res.ok) {
-                tg.showAlert("Заявка отправлена! Ожидайте сообщения от администратора.");
-                loadProfile();
-            } else {
-                tg.showAlert(res.error);
-            }
-        }
-
-        // Старт
-        loadProfile();
     </script>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </body>
 </html>
-
-
