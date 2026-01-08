@@ -2,189 +2,272 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Мой Бот</title>
-    <!-- Скрипт для интеграции с Telegram -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Mini App</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         :root {
-            --bg-color: #18222d;
-            --text-color: #ffffff;
-            --hint-color: #aaaaaa;
-            --button-color: #50a8eb;
-            --button-text-color: #ffffff;
-            --secondary-bg: #222f3c;
+            --bg-color: var(--tg-theme-bg-color, #18222d);
+            --text-color: var(--tg-theme-text-color, #ffffff);
+            --hint-color: var(--tg-theme-hint-color, #aaaaaa);
+            --button-color: var(--tg-theme-button-color, #50a8eb);
+            --button-text: var(--tg-theme-button-text-color, #ffffff);
+            --card-bg: var(--tg-theme-secondary-bg-color, #222f3c);
         }
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
             background-color: var(--bg-color);
             color: var(--text-color);
-            margin: 0;
-            padding: 15px;
-            box-sizing: border-box;
+            margin: 0; padding: 15px;
             text-align: center;
         }
-        .container {
-            max-width: 400px;
-            margin: 0 auto;
-        }
-        .header {
-            padding: 20px 0;
-        }
+        .container { max-width: 450px; margin: 0 auto; padding-bottom: 20px;}
+        
+        /* Карточка баланса */
         .balance-card {
-            background-color: var(--secondary-bg);
-            padding: 20px;
-            border-radius: 12px;
-            margin-bottom: 20px;
+            background-color: var(--card-bg);
+            padding: 25px; border-radius: 16px; margin-bottom: 20px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
         }
-        .balance-value {
-            font-size: 36px;
-            font-weight: bold;
+        .balance-value { font-size: 42px; font-weight: 800; }
+        .balance-label { color: var(--hint-color); font-size: 14px; text-transform: uppercase; letter-spacing: 1px;}
+        
+        /* Меню */
+        .menu-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .btn {
+            background-color: var(--button-color); color: var(--button-text);
+            border: none; padding: 16px; border-radius: 12px;
+            font-size: 16px; font-weight: 600; cursor: pointer;
+            transition: opacity 0.2s; width: 100%;
         }
-        .balance-label {
-            color: var(--hint-color);
-            font-size: 14px;
-        }
-        .menu {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
-        }
-        .menu-button {
-            background-color: var(--secondary-bg);
-            color: var(--text-color);
-            border: none;
-            padding: 15px;
-            border-radius: 8px;
-            font-size: 16px;
-            cursor: pointer;
-            text-align: center;
-        }
-        #tasks_section { display: none; }
-        .task-list { list-style: none; padding: 0; }
+        .btn:active { opacity: 0.8; }
+        .btn-outline { background-color: transparent; border: 2px solid var(--button-color); color: var(--button-color); margin-bottom: 15px;}
+
+        /* Секции */
+        .section { display: none; text-align: left; }
+        .active-section { display: block; animation: fadeIn 0.3s; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* Элементы списка заданий */
         .task-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            background-color: var(--secondary-bg);
-            padding: 15px;
-            border-radius: 8px;
-            margin-bottom: 10px;
+            background-color: var(--card-bg); padding: 15px; border-radius: 12px;
+            margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;
         }
-        .task-reward {
-            font-weight: bold;
-            color: #f5c518; /* Золотой цвет для звезд */
+        .task-info { display: flex; flex-direction: column; }
+        .task-channel { font-weight: bold; font-size: 16px; margin-bottom: 4px; }
+        .task-price { color: #f5c518; font-weight: bold; }
+        .task-btn { background-color: var(--button-color); color: white; border: none; padding: 8px 16px; border-radius: 8px; font-size: 13px; cursor: pointer;}
+        
+        /* Формы */
+        .form-group { margin-bottom: 15px; }
+        .form-label { display: block; margin-bottom: 8px; color: var(--hint-color); font-size: 14px;}
+        .form-input {
+            width: 100%; padding: 14px; border-radius: 10px; border: 1px solid var(--hint-color);
+            background-color: var(--bg-color); color: var(--text-color); box-sizing: border-box; font-size: 16px;
         }
+        .form-input:focus { border-color: var(--button-color); outline: none; }
+
+        h2 { margin-top: 0; margin-bottom: 20px; font-size: 24px;}
     </style>
 </head>
 <body>
     <div class="container">
-        <!-- Главный экран -->
-        <div id="main_section">
-            <div class="header">
-                <h2>Главная</h2>
-            </div>
+        
+        <!-- ГЛАВНАЯ -->
+        <div id="home" class="section active-section" style="text-align: center;">
             <div class="balance-card">
                 <div class="balance-label">Ваш баланс</div>
-                <div class="balance-value" id="balance">...</div>
+                <div class="balance-value" id="balance-display">0 ⭐</div>
             </div>
-            <div class="menu">
-                <button class="menu-button" onclick="showTasks()">📝 Задания</button>
-                <button class="menu-button" onclick="showCreateAd()">📢 Купить рекламу</button>
-                <button class="menu-button" onclick="showReferral()">🔗 Моя ссылка</button>
-                <button class="menu-button" onclick="showWithdraw()">💸 Вывод</button>
+            <div class="menu-grid">
+                <button class="btn" onclick="nav('tasks')">📝 Задания</button>
+                <button class="btn" onclick="nav('create_ad')">📢 Реклама</button>
+                <button class="btn" onclick="nav('referral')">🔗 Рефералы</button>
+                <button class="btn" onclick="nav('withdraw')">💸 Вывод</button>
             </div>
         </div>
 
-        <!-- Экран заданий -->
-        <div id="tasks_section">
-            <div class="header">
-                <button onclick="showMain()">← Назад</button>
-                <h2>Доступные задания</h2>
-            </div>
-            <ul class="task-list" id="task-list-container">
-                <!-- Задания будут вставлены сюда -->
-            </ul>
+        <!-- ЗАДАНИЯ -->
+        <div id="tasks" class="section">
+            <button class="btn btn-outline" onclick="nav('home')">← Назад</button>
+            <h2>Выполнить задания</h2>
+            <div id="tasks-container">Загрузка...</div>
         </div>
+
+        <!-- СОЗДАТЬ РЕКЛАМУ -->
+        <div id="create_ad" class="section">
+            <button class="btn btn-outline" onclick="nav('home')">← Назад</button>
+            <h2>Новая кампания</h2>
+            <div class="form-group">
+                <label class="form-label">Юзернейм канала (с @)</label>
+                <input type="text" id="ad-channel" class="form-input" placeholder="@mychannel">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Цена за подписку (⭐)</label>
+                <input type="number" id="ad-price" class="form-input" placeholder="2">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Общий бюджет (⭐)</label>
+                <input type="number" id="ad-budget" class="form-input" placeholder="100">
+            </div>
+            <button class="btn" onclick="submitAd()">Создать задание</button>
+        </div>
+
+        <!-- РЕФЕРАЛКА -->
+        <div id="referral" class="section">
+            <button class="btn btn-outline" onclick="nav('home')">← Назад</button>
+            <h2>Пригласить друга</h2>
+            <p style="color: var(--hint-color); line-height: 1.5;">Получайте бонусы за каждого приглашенного друга, который начнет пользоваться ботом.</p>
+            <div class="form-group">
+                <input type="text" id="ref-link" class="form-input" readonly value="Загрузка...">
+            </div>
+            <button class="btn" onclick="copyRef()">Копировать ссылку</button>
+        </div>
+
+        <!-- ВЫВОД -->
+        <div id="withdraw" class="section">
+            <button class="btn btn-outline" onclick="nav('home')">← Назад</button>
+            <h2>Вывод средств</h2>
+            <p style="color: var(--hint-color);">Минимальная сумма вывода: 100 ⭐</p>
+            <p style="font-size: 20px; font-weight: bold;">Доступно: <span id="withdraw-balance">0</span> ⭐</p>
+            <button class="btn" onclick="submitWithdraw()">Отправить заявку</button>
+        </div>
+
     </div>
 
     <script>
         const tg = window.Telegram.WebApp;
-        const API_URL = "http://127.0.0.1:8000"; // !!! ЗАМЕНИТЕ на URL вашего бэкенда
+        tg.ready();
+        tg.expand();
+
+        const API_URL = "https://your-server-url.com"; // !!! ВАЖНО: Замените на URL вашего сервера (например, ngrok) при деплое
+        // Для локального теста с телефона это работать не будет без https, для WebBrowser используйте http://127.0.0.1:8000
+        // Если вы запускаете локально, используйте http://127.0.0.1:8000
+        
+        let currentBalance = 0;
 
         // --- Навигация ---
-        function showMain() {
-            document.getElementById('main_section').style.display = 'block';
-            document.getElementById('tasks_section').style.display = 'none';
-        }
-        function showTasks() {
-            document.getElementById('main_section').style.display = 'none';
-            document.getElementById('tasks_section').style.display = 'block';
-            loadTasks();
+        function nav(sectionId) {
+            document.querySelectorAll('.section').forEach(el => el.classList.remove('active-section'));
+            document.getElementById(sectionId).classList.add('active-section');
+            if(sectionId === 'home') loadProfile();
+            if(sectionId === 'tasks') loadTasks();
         }
 
-        // --- API-запросы ---
-        async function apiRequest(endpoint, data) {
+        // --- API Helper ---
+        async function api(endpoint, data = {}) {
+            data.initData = tg.initData;
+            data.start_param = tg.initDataUnsafe.start_param; // Для рефералки
             try {
-                const response = await fetch(`${API_URL}${endpoint}`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                const res = await fetch(`${API_URL}${endpoint}`, {
+                    method: 'POST', headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify(data)
                 });
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                return await response.json();
-            } catch (error) {
-                console.error("API Request Error:", error);
-                tg.showAlert(`Ошибка: ${error.message}`);
+                return await res.json();
+            } catch (e) {
+                tg.showAlert("Ошибка сети");
+                return null;
             }
         }
-        
-        // --- Загрузка данных ---
+
+        // --- Логика ---
         async function loadProfile() {
-            const result = await apiRequest('/get_profile', { initData: tg.initData });
-            if (result && result.ok) {
-                document.getElementById('balance').innerText = `${result.data.balance} ⭐`;
+            const res = await api('/get_profile');
+            if (res && res.ok) {
+                currentBalance = res.balance;
+                document.getElementById('balance-display').innerText = `${res.balance} ⭐`;
+                document.getElementById('withdraw-balance').innerText = res.balance;
+                document.getElementById('ref-link').value = res.referral_link;
             }
         }
-        
+
         async function loadTasks() {
-            const container = document.getElementById('task-list-container');
-            container.innerHTML = '<li>Загрузка...</li>';
-            
-            const result = await apiRequest('/get_tasks', { initData: tg.initData });
-            if (result && result.ok) {
-                container.innerHTML = ''; // Очищаем
-                if (result.data.length === 0) {
-                    container.innerHTML = '<li>Нет доступных заданий.</li>';
+            const container = document.getElementById('tasks-container');
+            container.innerHTML = '<p style="text-align:center; color: var(--hint-color)">Поиск заданий...</p>';
+            const res = await api('/get_tasks');
+            if (res && res.ok) {
+                if(res.tasks.length === 0) {
+                    container.innerHTML = '<p style="text-align:center; color: var(--hint-color)">Заданий пока нет</p>';
                     return;
                 }
-                result.data.forEach(task => {
-                    const li = document.createElement('li');
-                    li.className = 'task-item';
-                    li.innerHTML = `
-                        <span>Подписаться на ${task.channel}</span>
-                        <span class="task-reward">+${task.price} ⭐</span>
+                container.innerHTML = '';
+                res.tasks.forEach(task => {
+                    const el = document.createElement('div');
+                    el.className = 'task-item';
+                    el.innerHTML = `
+                        <div class="task-info">
+                            <span class="task-channel">${task.channel}</span>
+                            <span class="task-price">+${task.price} ⭐</span>
+                        </div>
+                        <div>
+                            <button class="task-btn" style="margin-right:5px; background:#3390ec" onclick="openChannel('${task.channel}')">Подписаться</button>
+                            <button class="task-btn" onclick="checkTask(${task.id})">Проверить</button>
+                        </div>
                     `;
-                    container.appendChild(li);
+                    container.appendChild(el);
                 });
             }
         }
-        
-        // --- Функции кнопок ---
-        function showReferral() { tg.showAlert('Эта функция в разработке!'); }
-        function showCreateAd() { tg.showAlert('Эта функция в разработке!'); }
-        function showWithdraw() { tg.showAlert('Эта функция в разработке!'); }
 
+        function openChannel(username) {
+            tg.openTelegramLink(`https://t.me/${username.replace('@', '')}`);
+        }
 
-        // --- Инициализация ---
-        tg.ready();
-        tg.expand(); // Растягиваем приложение на весь экран
-        
-        // Загружаем профиль при старте
+        async function checkTask(taskId) {
+            tg.MainButton.showProgress();
+            const res = await api('/complete_task', { task_id: taskId });
+            tg.MainButton.hideProgress();
+            
+            if (res && res.ok) {
+                tg.showAlert(`Успешно! Начислено ${res.new_balance} ⭐`);
+                loadTasks(); // Обновить список
+            } else {
+                tg.showAlert(res ? res.error : "Ошибка");
+            }
+        }
+
+        async function submitAd() {
+            const channel = document.getElementById('ad-channel').value;
+            const price = document.getElementById('ad-price').value;
+            const budget = document.getElementById('ad-budget').value;
+
+            if(!channel || !price || !budget) return tg.showAlert("Заполните все поля");
+
+            tg.MainButton.showProgress();
+            const res = await api('/create_ad', { channel, price, budget });
+            tg.MainButton.hideProgress();
+
+            if (res && res.ok) {
+                tg.showAlert("Рекламная кампания создана!");
+                document.getElementById('ad-channel').value = '';
+                nav('home');
+            } else {
+                tg.showAlert(res.error);
+            }
+        }
+
+        function copyRef() {
+            const copyText = document.getElementById("ref-link");
+            copyText.select();
+            document.execCommand("copy");
+            tg.showAlert("Ссылка скопирована!");
+        }
+
+        async function submitWithdraw() {
+            if (currentBalance < 100) return tg.showAlert("Минимум 100 ⭐");
+            if (!confirm("Вы уверены, что хотите отправить заявку на вывод?")) return;
+
+            const res = await api('/withdraw');
+            if (res && res.ok) {
+                tg.showAlert("Заявка отправлена! Ожидайте сообщения от администратора.");
+                loadProfile();
+            } else {
+                tg.showAlert(res.error);
+            }
+        }
+
+        // Старт
         loadProfile();
-
     </script>
 </body>
 </html>
