@@ -157,18 +157,34 @@
         // --- API Helper ---
         async function api(endpoint, data = {}) {
             data.initData = tg.initData;
-            data.start_param = tg.initDataUnsafe.start_param; // Для рефералки
+            
+            // Проверка на наличие start_param, чтобы избежать ошибки undefined
+            data.start_param = (tg.initDataUnsafe && tg.initDataUnsafe.start_param) ? tg.initDataUnsafe.start_param : "";
+
             try {
                 const res = await fetch(`${API_URL}${endpoint}`, {
-                    method: 'POST', headers: {'Content-Type': 'application/json'},
+                    method: 'POST', 
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'ngrok-skip-browser-warning': 'true' // <--- ЭТА СТРОКА РЕШАЕТ ПРОБЛЕМУ
+                    },
                     body: JSON.stringify(data)
                 });
+                
+                // Проверяем, что ответ - это JSON, а не ошибка сервера
+                const contentType = res.headers.get("content-type");
+                if (!contentType || !contentType.includes("application/json")) {
+                    throw new Error("Сервер вернул не JSON (возможно, ошибка 500)");
+                }
+
                 return await res.json();
             } catch (e) {
-                tg.showAlert("Ошибка сети");
+                console.error(e); // Для отладки
+                tg.showAlert(`Ошибка сети: ${e.message}`);
                 return null;
             }
         }
+
 
         // --- Логика ---
         async function loadProfile() {
@@ -271,4 +287,5 @@
     </script>
 </body>
 </html>
+
 
