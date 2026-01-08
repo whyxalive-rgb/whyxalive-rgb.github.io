@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Мой Бот</title>
+    <!-- Скрипт для интеграции с Telegram -->
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        :root {
+            --bg-color: #18222d;
+            --text-color: #ffffff;
+            --hint-color: #aaaaaa;
+            --button-color: #50a8eb;
+            --button-text-color: #ffffff;
+            --secondary-bg: #222f3c;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 15px;
+            box-sizing: border-box;
+            text-align: center;
+        }
+        .container {
+            max-width: 400px;
+            margin: 0 auto;
+        }
+        .header {
+            padding: 20px 0;
+        }
+        .balance-card {
+            background-color: var(--secondary-bg);
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+        }
+        .balance-value {
+            font-size: 36px;
+            font-weight: bold;
+        }
+        .balance-label {
+            color: var(--hint-color);
+            font-size: 14px;
+        }
+        .menu {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+        .menu-button {
+            background-color: var(--secondary-bg);
+            color: var(--text-color);
+            border: none;
+            padding: 15px;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            text-align: center;
+        }
+        #tasks_section { display: none; }
+        .task-list { list-style: none; padding: 0; }
+        .task-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background-color: var(--secondary-bg);
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+        }
+        .task-reward {
+            font-weight: bold;
+            color: #f5c518; /* Золотой цвет для звезд */
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Главный экран -->
+        <div id="main_section">
+            <div class="header">
+                <h2>Главная</h2>
+            </div>
+            <div class="balance-card">
+                <div class="balance-label">Ваш баланс</div>
+                <div class="balance-value" id="balance">...</div>
+            </div>
+            <div class="menu">
+                <button class="menu-button" onclick="showTasks()">📝 Задания</button>
+                <button class="menu-button" onclick="showCreateAd()">📢 Купить рекламу</button>
+                <button class="menu-button" onclick="showReferral()">🔗 Моя ссылка</button>
+                <button class="menu-button" onclick="showWithdraw()">💸 Вывод</button>
+            </div>
+        </div>
+
+        <!-- Экран заданий -->
+        <div id="tasks_section">
+            <div class="header">
+                <button onclick="showMain()">← Назад</button>
+                <h2>Доступные задания</h2>
+            </div>
+            <ul class="task-list" id="task-list-container">
+                <!-- Задания будут вставлены сюда -->
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        const tg = window.Telegram.WebApp;
+        const API_URL = "http://127.0.0.1:8000"; // !!! ЗАМЕНИТЕ на URL вашего бэкенда
+
+        // --- Навигация ---
+        function showMain() {
+            document.getElementById('main_section').style.display = 'block';
+            document.getElementById('tasks_section').style.display = 'none';
+        }
+        function showTasks() {
+            document.getElementById('main_section').style.display = 'none';
+            document.getElementById('tasks_section').style.display = 'block';
+            loadTasks();
+        }
+
+        // --- API-запросы ---
+        async function apiRequest(endpoint, data) {
+            try {
+                const response = await fetch(`${API_URL}${endpoint}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return await response.json();
+            } catch (error) {
+                console.error("API Request Error:", error);
+                tg.showAlert(`Ошибка: ${error.message}`);
+            }
+        }
+        
+        // --- Загрузка данных ---
+        async function loadProfile() {
+            const result = await apiRequest('/get_profile', { initData: tg.initData });
+            if (result && result.ok) {
+                document.getElementById('balance').innerText = `${result.data.balance} ⭐`;
+            }
+        }
+        
+        async function loadTasks() {
+            const container = document.getElementById('task-list-container');
+            container.innerHTML = '<li>Загрузка...</li>';
+            
+            const result = await apiRequest('/get_tasks', { initData: tg.initData });
+            if (result && result.ok) {
+                container.innerHTML = ''; // Очищаем
+                if (result.data.length === 0) {
+                    container.innerHTML = '<li>Нет доступных заданий.</li>';
+                    return;
+                }
+                result.data.forEach(task => {
+                    const li = document.createElement('li');
+                    li.className = 'task-item';
+                    li.innerHTML = `
+                        <span>Подписаться на ${task.channel}</span>
+                        <span class="task-reward">+${task.price} ⭐</span>
+                    `;
+                    container.appendChild(li);
+                });
+            }
+        }
+        
+        // --- Функции кнопок ---
+        function showReferral() { tg.showAlert('Эта функция в разработке!'); }
+        function showCreateAd() { tg.showAlert('Эта функция в разработке!'); }
+        function showWithdraw() { tg.showAlert('Эта функция в разработке!'); }
+
+
+        // --- Инициализация ---
+        tg.ready();
+        tg.expand(); // Растягиваем приложение на весь экран
+        
+        // Загружаем профиль при старте
+        loadProfile();
+
+    </script>
+</body>
+</html>
